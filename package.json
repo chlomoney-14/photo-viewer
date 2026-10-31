@@ -1,0 +1,14 @@
+{
+  "name": "photo-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Download JPG previews of RAW photos from Google Drive, cull them with the keyboard, export the starred RAW file names.",
+  "scripts": {
+    "start": "node server.js",
+    "phone": "node server.js --lan",
+    "download": "node server.js download"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

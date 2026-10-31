@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1c1c1e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Photos">
+  <title>Photo Viewer</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Photo Viewer</div>
+    <button id="openFolderBtn" class="btn local-only server-only">Open folder</button>
+    <button id="downloadBtn" class="btn local-only server-only">Download from Drive</button>
+    <div id="folderPath" class="folder-path" title=""></div>
+    <div class="segmented" role="group" aria-label="Filter">
+      <button id="filterAll" class="seg active">All <span id="countAll">0</span></button>
+      <button id="filterStarred" class="seg" title="Show only starred photos (S)">★ Starred <span id="countStarred">0</span></button>
+    </div>
+    <button id="phoneBtn" class="btn local-only server-only" title="View these photos on your phone">Phone</button>
+    <button id="exportBtn" class="btn primary" disabled>Export<span class="wide-only"> starred</span></button>
+    <button id="menuBtn" class="btn icon" popovertarget="menu" title="More" aria-label="More">⋯</button>
+  </header>
+
+  <div id="menu" class="menu" popover>
+    <button type="button" data-menu="download" class="web-only">Download from Google Drive…</button>
+    <button type="button" data-menu="addLocal" class="web-only">Add photos from this device…</button>
+    <button type="button" data-menu="import">Star from a list…</button>
+    <button type="button" data-menu="offline" class="server-only">Save offline copy…</button>
+    <button type="button" data-menu="removeLibrary" class="web-only">Remove photos from this device…</button>
+    <button type="button" data-menu="help">Shortcuts &amp; gestures</button>
+  </div>
+
+  <main id="stage" class="stage">
+    <img id="placeholder" class="placeholder" alt="">
+    <img id="photo" class="photo" alt="" draggable="false">
+    <div id="starBadge" class="star-badge" hidden>★</div>
+    <div id="empty" class="empty">
+      <h1>Cull your shoot</h1>
+      <p class="server-only">Open a folder of JPGs, or pull JPG previews of the RAW files from a Google Drive folder.</p>
+      <p class="web-only">Paste a Google Drive folder link to download JPG previews of the RAW files to this device. They stay here for next time, even offline. Or use JPGs that are already on this device.</p>
+      <div class="empty-actions local-only">
+        <button class="btn primary server-only" data-action="open">Open folder</button>
+        <button class="btn primary web-only" data-action="download">Download from Google Drive</button>
+        <button class="btn server-only" data-action="download">Download from Drive</button>
+        <button class="btn web-only" data-action="addLocal">Use photos on this device</button>
+      </div>
+      <input id="localFiles" type="file" accept="image/jpeg,.jpg,.jpeg" multiple hidden>
+    </div>
+  </main>
+
+  <div class="infobar">
+    <span id="rawName" class="raw-name"></span>
+    <span id="position" class="muted"></span>
+    <div class="spacer"></div>
+    <span id="zoomLevel" class="muted"></span>
+    <span class="muted hint">← → browse · space star · scroll to zoom · ? help</span>
+    <button id="starBtn" class="star-btn" title="Star (space)" aria-label="Star" aria-pressed="false" hidden>☆</button>
+  </div>
+
+  <nav id="filmstrip" class="filmstrip" aria-label="Photos"></nav>
+  <div id="scrubber" class="scrubber" hidden>
+    <div id="scrubThumb" class="scrub-thumb"></div>
+    <div id="scrubLabel" class="scrub-label"></div>
+  </div>
+
+  <dialog id="downloadDialog" class="dialog">
+    <form method="dialog" id="downloadForm">
+      <h2>Download JPG previews from Google Drive</h2>
+      <label>Drive folder link
+        <input id="driveFolder" type="text" required placeholder="https://drive.google.com/drive/folders/…">
+      </label>
+      <p id="libraryStatus" class="muted web-only"></p>
+      <label><span id="apiKeyLabel">Google API key (optional)</span>
+        <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…">
+        <small id="apiKeyHint" class="muted">Not needed for folders shared as “Anyone with the link”. See README.</small>
+      </label>
+      <details class="key-help web-only">
+        <summary>How to get a free API key (5 minutes, once)</summary>
+        <ol>
+          <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> and create a project (any name).</li>
+          <li>Turn on the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API</a> for it.</li>
+          <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a> › <b>Create credentials</b> › <b>API key</b>, and copy it.</li>
+          <li>Edit the key: under <b>Website restrictions</b> add <code id="keyOrigin"></code>, and under <b>API restrictions</b> pick <b>Google Drive API</b>.</li>
+        </ol>
+        <p>The key only lets this app list files in folders shared as “Anyone with the link”. It’s saved on this device.</p>
+      </details>
+      <label class="server-only">Save JPGs to
+        <div class="row">
+          <input id="destDir" type="text" required placeholder="/Users/you/Pictures/shoot">
+          <button type="button" id="pickDestBtn" class="btn">Choose…</button>
+        </div>
+      </label>
+      <label>Preview size
+        <select id="previewSize">
+          <option value="1600">1600 px (~0.4 MB each)</option>
+          <option value="2560">2560 px (~0.7 MB each)</option>
+          <option value="4000">4000 px (~1.4 MB each)</option>
+          <option value="6000" selected>6000 px (~2.2 MB each)</option>
+          <option value="8000">Full resolution (~3 MB each)</option>
+        </select>
+      </label>
+      <div id="progressWrap" class="progress-wrap" hidden>
+        <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="progressText" class="muted"></div>
+      </div>
+      <p id="storageNote" class="muted web-only">Photos are saved in this browser on this device and work offline. On iPhone, tap Share › <b>Add to Home Screen</b> and open it from there, so iOS keeps them.</p>
+      <div class="dialog-actions">
+        <button type="button" id="cancelDownloadBtn" class="btn">Close</button>
+        <button type="submit" id="startDownloadBtn" class="btn primary">Download</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="exportDialog" class="dialog">
+    <form method="dialog">
+      <h2 id="exportTitle">Exported</h2>
+      <p id="exportPath" class="muted mono"></p>
+      <textarea id="exportList" readonly rows="10"></textarea>
+      <div class="dialog-actions">
+        <button type="button" id="revealBtn" class="btn local-only server-only">Show in Finder</button>
+        <button type="button" id="saveListBtn" class="btn web-only">Save .txt</button>
+        <button type="button" id="shareListBtn" class="btn web-only" hidden>Share</button>
+        <button type="button" id="copyBtn" class="btn">Copy list</button>
+        <button class="btn primary">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="helpDialog" class="dialog">
+    <form method="dialog">
+      <h2>Keyboard shortcuts</h2>
+      <dl class="keys">
+        <dt>← →</dt><dd>Previous / next photo</dd>
+        <dt>Space</dt><dd>Star / unstar</dd>
+        <dt>Scroll · pinch</dt><dd>Zoom at the cursor</dd>
+        <dt>Drag</dt><dd>Pan when zoomed</dd>
+        <dt>Double-click · Z</dt><dd>Toggle fit / 100%</dd>
+        <dt>+ −</dt><dd>Zoom in / out</dd>
+        <dt>0</dt><dd>Fit to window</dd>
+        <dt>S</dt><dd>Show all / starred only</dd>
+        <dt>Home End</dt><dd>First / last photo</dd>
+      </dl>
+      <h3>On a phone</h3>
+      <dl class="keys">
+        <dt>Swipe</dt><dd>Previous / next photo</dd>
+        <dt>Pinch</dt><dd>Zoom</dd>
+        <dt>Double-tap</dt><dd>Toggle fit / 100%</dd>
+        <dt>☆</dt><dd>Star / unstar</dd>
+      </dl>
+      <p class="muted">Zoom is kept when you move between photos, so you can check focus across a burst.</p>
+      <div class="dialog-actions"><button class="btn primary">Close</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="importDialog" class="dialog">
+    <form method="dialog" id="importForm">
+      <h2>Star photos from a list</h2>
+      <label>File names
+        <textarea id="importText" rows="8" placeholder="OCT01574.ARW&#10;OCT01580.ARW&#10;…"></textarea>
+        <small>One per line, or separated by commas or spaces. RAW names, JPG names or just OCT01574 all work.</small>
+      </label>
+      <div class="row">
+        <button type="button" id="importFileBtn" class="btn">Load a .txt file…</button>
+        <input id="importFile" type="file" accept=".txt,.csv,text/plain" hidden>
+      </div>
+      <label class="check"><input id="importReplace" type="checkbox"> Unstar everything else first</label>
+      <p id="importResult" class="result"></p>
+      <div class="dialog-actions">
+        <button type="button" id="importCloseBtn" class="btn">Close</button>
+        <button type="submit" class="btn primary">Star them</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="offlineDialog" class="dialog">
+    <form method="dialog" id="offlineForm">
+      <h2>Save an offline copy</h2>
+      <p class="muted">Downloads a .zip of 2048 px JPGs to this device, with a <b>Starred</b> folder holding everything starred so far on any device. It works with no connection to the Mac. Download again later to pick up newer stars.</p>
+      <label class="check"><input type="radio" name="offlineScope" value="starred" checked> <span>Starred only <span id="offlineStarredInfo" class="muted"></span></span></label>
+      <label class="check"><input type="radio" name="offlineScope" value="all"> <span>Every photo, plus the Starred folder <span id="offlineAllInfo" class="muted"></span></span></label>
+      <div id="offlineProgressWrap" class="progress-wrap" hidden>
+        <div class="progress"><div id="offlineProgressBar" class="progress-bar"></div></div>
+        <div id="offlineProgressText" class="muted"></div>
+      </div>
+      <div id="offlineHint" class="offline-hint" hidden>
+        <p><b>Where it is:</b> <span id="offlineFile" class="mono"></span> in the <b>Files</b> app, under <b>Downloads</b>. On iPhone that’s usually <b>iCloud Drive › Downloads</b>, or <b>On My iPhone › Downloads</b> if iCloud Drive is off (Settings › Apps › Safari › Downloads shows which). On Android it’s <b>Files › Downloads</b>.</p>
+        <p><b>To view it anywhere, no Wi-Fi needed:</b> tap the .zip once to unzip it. That makes a folder with <b>Starred</b> (and <b>All</b>) inside. Open a photo and swipe through them, or select them and choose <b>Save to Photos</b>.</p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="offlineCloseBtn" class="btn">Close</button>
+        <button type="submit" id="offlineStartBtn" class="btn primary">Download</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="phoneDialog" class="dialog">
+    <form method="dialog">
+      <h2>View on your phone</h2>
+      <div id="phoneBody"></div>
+      <div class="dialog-actions"><button class="btn primary">Done</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
