@@ -12,7 +12,7 @@ There are two ways to use it:
 The web version is the `public/` folder published to GitHub Pages. The site only holds the app; your photos never go to GitHub.
 
 1. Open the site and tap **Download from Google Drive**.
-2. Paste the link to a Drive folder shared as **Anyone with the link**, plus a Google API key the first time (the dialog explains how to make one in about 5 minutes; it's saved on that device).
+2. Paste the link to a Drive folder shared as **Anyone with the link**.
 3. Pick a size (2048 px is about 0.5 MB a photo, so about 1 GB for 1,850 photos) and tap **Download**.
 
 The JPG previews download straight from Google into the browser's storage on that device. Next time you open the site, they're already there, and it works offline. If the photos are gone (say the browser's storage was cleared), it asks you to download again or to choose JPGs already on the device (**⋯ › Add photos from this device**).
@@ -21,7 +21,7 @@ The JPG previews download straight from Google into the browser's storage on tha
 - Stars are kept on each device. **Export** gives the list of starred RAW names to copy, save as .txt or share; **⋯ › Star from a list** loads a list back in, so you can move stars between devices.
 - Zooming in loads a sharper 4096 px copy from Drive while online.
 - **⋯ › Remove photos from this device** frees the space.
-- To skip the API key step for everyone, put a key in `public/config.js`. It's public there, so restrict it in Google Cloud to your Pages address and the Drive API.
+- Listing a folder's files goes through the Google Drive API, using the key in `public/config.js`. That key is public, so it's restricted in Google Cloud (project `photo-viewer-513400`) to `https://chlomoney-14.github.io/*` and the Drive API. If you fork this, make your own key the same way and put it there; with no key in that file, the app asks each person for one.
 
 Every push to `main` republishes the site (see `.github/workflows/pages.yml`).
 

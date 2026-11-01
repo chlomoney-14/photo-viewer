@@ -78,11 +78,11 @@
         <input id="driveFolder" type="text" required placeholder="https://drive.google.com/drive/folders/…">
       </label>
       <p id="libraryStatus" class="muted web-only"></p>
-      <label><span id="apiKeyLabel">Google API key (optional)</span>
+      <label id="apiKeyField"><span id="apiKeyLabel">Google API key (optional)</span>
         <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…">
         <small id="apiKeyHint" class="muted">Not needed for folders shared as “Anyone with the link”. See README.</small>
       </label>
-      <details class="key-help web-only">
+      <details id="keyHelp" class="key-help web-only">
         <summary>How to get a free API key (5 minutes, once)</summary>
         <ol>
           <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> and create a project (any name).</li>

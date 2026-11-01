@@ -1116,6 +1116,8 @@ function openWebDownloadDialog() {
   select.value = String(library?.size || 2048);
   if (!$('driveFolder').value) $('driveFolder').value = library?.link || '';
   const hasKey = Boolean(configuredKey() || saved.get(API_KEY_KEY, ''));
+  // A key built into config.js covers every device, so there's nothing to ask for.
+  $('apiKeyField').hidden = $('keyHelp').hidden = Boolean(configuredKey());
   $('apiKeyLabel').textContent = 'Google API key';
   $('apiKey').required = !hasKey;
   $('apiKey').placeholder = hasKey ? 'Saved key will be used' : 'AIza…';
